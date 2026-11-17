@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Koffiebar Rush</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#2b1d16; --wood:#6b4430; --wood2:#875838; --cream:#f7ead8; --ink:#2b1d16;
+  --accent:#e0703a; --green:#4caf6a; --red:#d9483b; --gold:#f2b631;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Fredoka',system-ui,sans-serif;background:var(--bg);color:var(--cream);min-height:100vh;overflow-x:hidden;user-select:none}
+button{font-family:inherit;cursor:pointer;border:none}
+#app{max-width:1150px;margin:0 auto;padding:14px;display:flex;flex-direction:column;gap:12px;min-height:100vh}
+
+/* HUD */
+.hud{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.logo{font-size:26px;font-weight:700;letter-spacing:.5px}
+.logo span{color:var(--accent)}
+.stats{display:flex;gap:8px;flex-wrap:wrap}
+.stat{background:rgba(255,255,255,.08);padding:6px 12px;border-radius:12px;font-weight:600;font-size:16px;color:var(--cream)}
+.stat b{color:var(--gold)}
+.hearts{letter-spacing:2px}
+
+/* Shop */
+.shop{background:linear-gradient(#f3d9b8,#e8c49a);border-radius:18px;padding:14px 14px 0;position:relative;overflow:hidden}
+.shop::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 60px,rgba(0,0,0,.03) 60px 62px);pointer-events:none}
+.queue{display:flex;gap:12px;justify-content:center;align-items:flex-end;min-height:190px;position:relative;z-index:1}
+.customer{width:160px;display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:transform .2s;animation:walkin .5s ease-out}
+.customer:hover{transform:translateY(-4px)}
+.customer.selected .bubble{outline:4px solid var(--accent);outline-offset:2px}
+.customer.leaving{animation:walkout .5s ease-in forwards;pointer-events:none}
+.customer.happy .face{animation:bounce .5s}
+@keyframes walkin{from{transform:translateX(120px);opacity:0}to{transform:none;opacity:1}}
+@keyframes walkout{to{transform:translateY(-20px);opacity:0}}
+@keyframes bounce{50%{transform:translateY(-14px)}}
+.bubble{background:#fff;color:var(--ink);border-radius:14px;padding:8px 10px;text-align:center;position:relative;width:100%;box-shadow:0 3px 0 rgba(0,0,0,.15)}
+.bubble::after{content:"";position:absolute;bottom:-8px;left:50%;margin-left:-8px;border:8px solid transparent;border-top-color:#fff;border-bottom:0}
+.bubble .drink{font-weight:700;font-size:15px;line-height:1.15}
+.bubble .icons{font-size:14px;margin-top:3px;min-height:18px}
+.patience{height:7px;background:#eee;border-radius:5px;margin-top:6px;overflow:hidden}
+.patience div{height:100%;background:var(--green);transition:background .3s}
+.face{font-size:60px;line-height:1;margin-top:10px}
+.name{color:var(--ink);font-weight:600;font-size:14px;margin-top:-2px}
+.empty{color:#8a6a50;font-size:18px;align-self:center;padding-bottom:60px}
+
+/* bar lane with barista */
+.lane{height:96px;position:relative;margin:0 -14px;background:linear-gradient(#c79a6c,#b98a5c);border-top:4px solid #a77a4f;z-index:2}
+.lane .machine{position:absolute;left:12px;bottom:6px;font-size:44px}
+.barista{position:absolute;bottom:4px;left:160px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;z-index:3;pointer-events:none}
+.barista .tray{font-size:26px;height:30px;transition:opacity .15s;filter:drop-shadow(0 2px 0 rgba(0,0,0,.2))}
+.barista .body{font-size:52px;line-height:1;display:inline-block}
+.barista.walking .body{animation:step .3s infinite alternate}
+.barista.flip .body{transform:scaleX(-1)}
+.barista.walking.flip .body{animation:stepflip .3s infinite alternate}
+@keyframes step{to{transform:translateY(-5px) rotate(4deg)}}
+@keyframes stepflip{from{transform:scaleX(-1)}to{transform:scaleX(-1) translateY(-5px) rotate(-4deg)}}
+.barista .tag{font-size:11px;font-weight:700;color:#5a3a24;background:#fff8;padding:0 6px;border-radius:6px;margin-top:-2px}
+.counter{height:22px;background:linear-gradient(var(--wood2),var(--wood));margin:0 -14px;border-top:5px solid #9b6a45;position:relative;z-index:2}
+
+/* Workstation */
+.station{display:grid;grid-template-columns:1fr 230px;gap:12px}
+@media(max-width:760px){.station{grid-template-columns:1fr}}
+.panel{background:rgba(255,255,255,.06);border-radius:18px;padding:14px}
+.panel h3{font-size:15px;font-weight:600;opacity:.75;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px}
+.ingredients{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px}
+.ing{background:var(--cream);color:var(--ink);border-radius:14px;padding:8px 6px 10px;font-weight:600;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:2px;box-shadow:0 4px 0 #c9b49a;transition:transform .08s;position:relative;overflow:hidden}
+.ing:active{transform:translateY(3px);box-shadow:0 1px 0 #c9b49a}
+.ing .e{font-size:26px}
+.ing .k{position:absolute;top:4px;left:7px;font-size:11px;opacity:.45}
+.ing .stock{position:absolute;left:0;right:0;bottom:0;height:5px;background:#0001}
+.ing .stock div{height:100%;background:var(--green);transition:width .2s}
+.ing .cnt{font-size:11px;opacity:.6}
+.ing .refill{position:absolute;top:2px;right:4px;font-size:13px;background:#0000000f;border-radius:8px;padding:0 5px;line-height:18px;color:var(--ink)}
+.ing .refill:hover{background:#0002}
+.ing.low{box-shadow:0 4px 0 var(--gold)}
+.ing.out{background:#d9cbbb;box-shadow:0 4px 0 var(--red)}
+.ing.out .e{filter:grayscale(1);opacity:.5}
+.ing.refilling{background:#e6f1e6}
+.ing .overlay-txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;background:rgba(255,255,255,.55);color:var(--ink)}
+.ing.out .overlay-txt{color:var(--red)}
+
+.cupwrap{display:flex;flex-direction:column;align-items:center;gap:10px}
+.cupouter{position:relative;padding-right:28px}
+.cup{width:120px;height:140px;background:rgba(255,255,255,.9);border-radius:0 0 30px 30px;position:relative;overflow:hidden;border:5px solid #fff;display:flex;flex-direction:column-reverse}
+.cupouter .handle{position:absolute;right:2px;top:32px;width:30px;height:54px;border:7px solid #fff;border-left:none;border-radius:0 22px 22px 0}
+.layer{width:100%;animation:pour .25s ease-out}
+@keyframes pour{from{transform:scaleY(0);transform-origin:bottom}}
+.cuplist{font-size:13px;opacity:.8;text-align:center;min-height:36px}
+.btns{display:flex;gap:8px;width:100%}
+.btn{flex:1;padding:12px;border-radius:14px;font-weight:700;font-size:16px;color:#fff;box-shadow:0 4px 0 rgba(0,0,0,.3)}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.3)}
+.serve{background:var(--green)}
+.serve.busy{background:#7b8f80}
+.trash{background:var(--red);flex:0 0 56px}
+
+/* Recipe book */
+.recipes{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px}
+.rec{background:rgba(255,255,255,.05);border-radius:10px;padding:6px 10px;font-size:13px;display:flex;justify-content:space-between;gap:6px}
+.rec b{font-weight:600}
+.rec.locked{opacity:.3}
+.toggle{background:none;color:var(--cream);opacity:.75;font-size:14px;text-decoration:underline}
+
+/* Overlay */
+.overlay{position:fixed;inset:0;background:rgba(20,12,8,.88);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
+.card{background:var(--cream);color:var(--ink);border-radius:24px;padding:28px;max-width:480px;text-align:center;max-height:95vh;overflow:auto}
+.card h1{font-size:34px;margin-bottom:6px}
+.card p{margin:10px 0;line-height:1.45}
+.card .big{font-size:60px}
+.card .btn{background:var(--accent);margin-top:14px;width:100%}
+.card ul{text-align:left;margin:10px 0 0 20px;line-height:1.6}
+.hidden{display:none!important}
+
+.toast{position:fixed;left:50%;top:90px;transform:translateX(-50%);padding:10px 20px;border-radius:14px;font-weight:700;font-size:20px;z-index:40;pointer-events:none;animation:toast 1.4s forwards;color:#fff}
+@keyframes toast{0%{opacity:0;transform:translate(-50%,10px)}15%{opacity:1;transform:translate(-50%,0)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-20px)}}
+.levelup{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;font-size:48px;font-weight:700;color:var(--gold);text-shadow:0 4px 0 #000;pointer-events:none;z-index:45;animation:toast 2.4s forwards}
+.coinpop{position:absolute;font-weight:700;color:#2e7d32;font-size:22px;z-index:5;pointer-events:none;animation:coinup 1s forwards}
+@keyframes coinup{to{transform:translateY(-50px);opacity:0}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="hud">
+    <div class="logo">☕ Koffiebar <span>Rush</span></div>
+    <div class="stats">
+      <div class="stat">Dag <b id="level">1</b></div>
+      <div class="stat">💰 <b id="coins">0</b></div>
+      <div class="stat">Geholpen <b id="served">0</b></div>
+      <div class="stat hearts" id="hearts">❤️❤️❤️</div>
+      <button class="stat" id="pauseBtn" title="Pauze (P)">⏸</button>
+    </div>
+  </div>
+
+  <div class="shop" id="shop">
+    <div class="queue" id="queue"></div>
+    <div class="lane" id="lane">
+      <div class="machine">☕🫖</div>
+      <div class="barista" id="barista"><div class="tray" id="tray"></div><div class="body">🧑‍🍳</div><div class="tag">Barista</div></div>
+    </div>
+    <div class="counter"></div>
+  </div>
+
+  <div class="station">
+    <div class="panel">
+      <h3>Ingrediënten <span style="text-transform:none;letter-spacing:0;opacity:.7;font-weight:400">— op = klik om bij te vullen, ↻ = nu bijvullen</span></h3>
+      <div class="ingredients" id="ingredients"></div>
+    </div>
+    <div class="panel cupwrap">
+      <h3>Jouw kopje</h3>
+      <div class="cupouter"><div class="cup" id="cup"></div><div class="handle"></div></div>
+      <div class="cuplist" id="cuplist">Leeg</div>
+      <div class="btns">
+        <button class="btn trash" id="trashBtn" title="Weggooien (Backspace)">🗑</button>
+        <button class="btn serve" id="serveBtn" title="Serveren (Spatie/Enter)">Serveer ☕</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3 style="display:flex;justify-content:space-between;align-items:center">Receptenboek <button class="toggle" id="recToggle">verbergen</button></h3>
+    <div class="recipes" id="recipes"></div>
+  </div>
+</div>
+
+<div class="overlay" id="startScreen">
+  <div class="card">
+    <div class="big">☕🧑‍🍳</div>
+    <h1>Koffiebar Rush</h1>
+    <p>Klanten komen bestellen bij jouw koffiebar. Maak hun drankje, en je barista brengt het naar ze toe!</p>
+    <ul>
+      <li>Klik op een <b>klant</b> om die te kiezen (of Tab)</li>
+      <li>Klik op <b>ingrediënten</b> om het kopje te vullen</li>
+      <li>Druk op <b>Serveer</b> (spatie): de barista loopt ermee naar de klant</li>
+      <li>Ingrediënten raken <b>op</b>! Klik erop om bij te vullen, dat duurt even</li>
+      <li>Sneller serveren = meer fooi 💰</li>
+      <li>3 boze klanten en de zaak gaat dicht…</li>
+    </ul>
+    <p id="bestStart" style="font-weight:600"></p>
+    <button class="btn" id="startBtn">Open de zaak!</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="pauseScreen">
+  <div class="card"><h1>Pauze ☕</h1><p>Even een koffiepauze.</p><button class="btn" id="resumeBtn">Verder</button></div>
+</div>
+
+<div class="overlay hidden" id="overScreen">
+  <div class="card">
+    <div class="big">😩</div>
+    <h1>De zaak is dicht!</h1>
+    <p id="overText"></p>
+    <p id="overBest" style="font-weight:700"></p>
+    <button class="btn" id="againBtn">Nog een keer</button>
+  </div>
+</div>
+
+<script>
+// n = naam, e = emoji, c = kleur in kopje, h = laaghoogte, max = voorraad, rt = bijvultijd (s)
+const ING = {
+  espresso: {n:'Espresso',   e:'☕', c:'#3b2014', h:20, max:12, rt:3},
+  melk:     {n:'Melk',       e:'🥛', c:'#f4ecdf', h:22, max:12, rt:2.5},
+  havermelk:{n:'Havermelk',  e:'🌾', c:'#eadcc0', h:22, max:8,  rt:2.5},
+  schuim:   {n:'Melkschuim', e:'☁️', c:'#fffaf2', h:16, max:10, rt:2},
+  water:    {n:'Heet water', e:'💧', c:'#a7744d', h:22, max:12, rt:1.5},
+  thee:     {n:'Thee',       e:'🍵', c:'#b5793a', h:18, max:8,  rt:2.5},
+  matcha:   {n:'Matcha',     e:'🍃', c:'#7fae4e', h:18, max:6,  rt:3},
+  choco:    {n:'Chocolade',  e:'🍫', c:'#5a2f1b', h:16, max:8,  rt:3},
+  karamel:  {n:'Karamel',    e:'🍯', c:'#d08b2c', h:12, max:6,  rt:2.5},
+  vanille:  {n:'Vanille',    e:'🌼', c:'#f3e2a5', h:12, max:6,  rt:2.5},
+  hazelnoot:{n:'Hazelnoot',  e:'🌰', c:'#9a6a3c', h:12, max:6,  rt:2.5},
+  kaneel:   {n:'Kaneel',     e:'🪵', c:'#a0522d', h:8,  max:6,  rt:2},
+  ijs:      {n:'IJsblokjes', e:'🧊', c:'#cfe9f5', h:20, max:10, rt:2},
+  slagroom: {n:'Slagroom',   e:'🍦', c:'#ffffff', h:16, max:8,  rt:2.5},
+};
+const KEYS = Object.keys(ING);
+const HOTKEYS = ['1','2','3','4','5','6','7','8','9','0','q','w','e','r'];
+
+const RECIPES = [
+  {n:'Espresso', i:['espresso'], p:3, lvl:1},
+  {n:'Americano', i:['espresso','water'], p:4, lvl:1},
+  {n:'Cappuccino', i:['espresso','melk','schuim'], p:5, lvl:1},
+  {n:'Latte', i:['espresso','melk','melk'], p:5, lvl:1},
+  {n:'Kopje thee', i:['thee','water'], p:3, lvl:1},
+  {n:'Dubbele espresso', i:['espresso','espresso'], p:4, lvl:2},
+  {n:'Warme chocomel', i:['choco','melk','slagroom'], p:5, lvl:2},
+  {n:'Mocha', i:['espresso','choco','melk'], p:6, lvl:2},
+  {n:'Haver latte', i:['espresso','havermelk','havermelk'], p:6, lvl:2},
+  {n:'Flat white', i:['espresso','espresso','melk'], p:6, lvl:3},
+  {n:'IJskoffie', i:['espresso','ijs','melk'], p:6, lvl:3},
+  {n:'Chai latte', i:['thee','melk','kaneel'], p:6, lvl:3},
+  {n:'Matcha latte', i:['matcha','melk','schuim'], p:7, lvl:3},
+  {n:'Karamel macchiato', i:['espresso','melk','schuim','karamel'], p:7, lvl:4},
+  {n:'Vanille latte', i:['espresso','melk','melk','vanille'], p:7, lvl:4},
+  {n:'Hazelnoot cappuccino', i:['espresso','melk','schuim','hazelnoot'], p:7, lvl:4},
+  {n:'Iced mocha', i:['espresso','choco','ijs','melk','slagroom'], p:8, lvl:5},
+  {n:'Iced matcha', i:['matcha','havermelk','ijs'], p:7, lvl:5},
+  {n:'Kaneel chocomel', i:['choco','melk','kaneel','slagroom'], p:8, lvl:5},
+  {n:'Karamel frappé', i:['espresso','ijs','melk','karamel','slagroom'], p:9, lvl:6},
+  {n:'Hazelnoot mocha', i:['espresso','choco','melk','hazelnoot','slagroom'], p:9, lvl:6},
+  {n:'Vanille chai', i:['thee','melk','kaneel','vanille','schuim'], p:9, lvl:6},
+  {n:'Haver karamel latte', i:['espresso','havermelk','havermelk','karamel','kaneel'], p:10, lvl:7},
+];
+
+const FACES = ['👩','👨','🧑','👵','👴','👩‍🦰','👨‍🦱','🧔','👱‍♀️','👩‍💼','👨‍🎓','🧑‍🎨','👮','👷','🕵️','🧑‍🚀','👩‍🔬','🧑‍🎤'];
+const NAMES = ['Sanne','Daan','Emma','Lucas','Fleur','Bram','Noor','Milan','Lotte','Sem','Julia','Thijs','Eva','Ruben','Anouk','Jesse','Ilse','Kees','Mila','Jan','Fatima','Mo','Yara','Finn'];
+
+const HOME_X = 160;
+const WALK_SPEED = 520; // px per seconde
+
+let state, cup = [], selectedId = null;
+let lastTime = 0, running = false, paused = false, custId = 0;
+let stock = {}, refill = {}; // refill[k] = resterende tijd
+let barista = {x:HOME_X, phase:'idle', drink:null, custId:null, targetX:HOME_X, wait:0};
+
+const $ = id => document.getElementById(id);
+const sortKey = a => [...a].sort().join(',');
+const available = () => RECIPES.filter(r=>r.lvl<=state.level);
+
+function newGame(){
+  state = {level:1, coins:0, served:0, lives:3, customers:[], spawnTimer:1.2, servedThisLevel:0};
+  cup=[]; selectedId=null;
+  KEYS.forEach(k=>{stock[k]=ING[k].max; refill[k]=0;});
+  barista = {x:HOME_X, phase:'idle', drink:null, custId:null, targetX:HOME_X, wait:0};
+  renderAll(); renderBarista();
+}
+
+const maxCustomers = () => Math.min(2+Math.floor(state.level/2),5);
+const spawnInterval = () => Math.max(9 - state.level*0.8, 3);
+const patienceFor = r => Math.max(20 + r.i.length*4 - state.level*1.5, 11 + r.i.length*2);
+
+function spawn(){
+  const pool = available();
+  const weighted = pool.flatMap(r=> r.lvl===state.level ? [r,r] : [r]);
+  const r = weighted[Math.random()*weighted.length|0];
+  const p = patienceFor(r);
+  const c = {id:++custId, recipe:r, face:FACES[Math.random()*FACES.length|0], name:NAMES[Math.random()*NAMES.length|0], max:p, left:p};
+  state.customers.push(c);
+  if(selectedId===null) selectedId=c.id;
+  renderQueue();
+}
+
+/* ---------- Game loop ---------- */
+function loop(t){
+  if(!running) return;
+  const dt = Math.min((t-lastTime)/1000, .1); lastTime=t;
+  if(!paused){
+    state.spawnTimer -= dt;
+    if(state.spawnTimer<=0 && state.customers.length<maxCustomers()){
+      spawn(); state.spawnTimer = spawnInterval()*(0.8+Math.random()*0.4);
+    }
+    for(const c of [...state.customers]){
+      // klant die op dit moment bediend wordt, wacht geduldig
+      if(barista.custId===c.id && barista.phase==='go') continue;
+      c.left -= dt;
+      if(c.left<=0) angry(c);
+    }
+    updatePatience();
+    updateRefills(dt);
+    updateBarista(dt);
+  }
+  if(running) requestAnimationFrame(loop);
+}
+
+function updateRefills(dt){
+  let changed=false;
+  for(const k of KEYS){
+    if(refill[k]>0){
+      refill[k]-=dt;
+      if(refill[k]<=0){refill[k]=0; stock[k]=ING[k].max; changed=true; sound('ding');}
+      else updateIngButton(k);
+    }
+  }
+  if(changed) KEYS.forEach(updateIngButton);
+}
+
+function customerX(id){
+  const el=document.querySelector(`.customer[data-id="${id}"]`);
+  if(!el) return null;
+  const s=$('shop').getBoundingClientRect(), r=el.getBoundingClientRect();
+  return r.left - s.left + r.width/2;
+}
+
+function updateBarista(dt){
+  if(barista.phase==='idle') return;
+  if(barista.phase==='go'){
+    const tx = state.customers.some(c=>c.id===barista.custId) ? customerX(barista.custId) : null;
+    if(tx===null){ // klant is al weg
+      barista.phase='back'; barista.drink=null;
+      toast('Klant is al weg… drankje weggegooid 😕','var(--accent)');
+    } else barista.targetX=tx;
+  }
+  if(barista.phase==='hand'){
+    barista.wait-=dt;
+    if(barista.wait<=0){barista.phase='back'; barista.targetX=HOME_X;}
+  } else {
+    const dir = Math.sign(barista.targetX-barista.x);
+    const step = WALK_SPEED*dt;
+    if(Math.abs(barista.targetX-barista.x)<=step){
+      barista.x=barista.targetX;
+      if(barista.phase==='go'){ deliver(); barista.phase='hand'; barista.wait=.45; }
+      else if(barista.phase==='back'){ barista.phase='idle'; }
+    } else { barista.x+=dir*step; barista.flip = dir<0; }
+  }
+  if(barista.phase==='back') barista.targetX=HOME_X;
+  renderBarista();
+}
+
+function renderBarista(){
+  const b=$('barista');
+  b.style.left=barista.x+'px';
+  b.classList.toggle('walking', barista.phase==='go'||barista.phase==='back');
+  b.classList.toggle('flip', !!barista.flip && barista.phase!=='idle' && barista.phase!=='hand');
+  $('tray').textContent = barista.drink ? '☕' : '';
+  $('serveBtn').classList.toggle('busy', barista.phase!=='idle');
+  $('serveBtn').textContent = barista.phase==='idle' ? 'Serveer ☕' : 'Onderweg…';
+}
+
+function angry(c){
+  removeCustomer(c, false);
+  state.lives--;
+  sound('bad');
+  toast(`${c.name} is boos weggelopen! 😠`, 'var(--red)');
+  renderHUD();
+  if(state.lives<=0) gameOver();
+}
+
+function removeCustomer(c, happy){
+  state.customers = state.customers.filter(x=>x.id!==c.id);
+  const el = document.querySelector(`.customer[data-id="${c.id}"]`);
+  if(selectedId===c.id) selectedId = state.customers[0]?.id ?? null;
+  if(el){
+    el.querySelector('.face').textContent = happy?'😍':'😡';
+    el.classList.add(happy?'happy':'x','leaving');
+    setTimeout(()=>{el.remove(); renderQueue();}, 500);
+  } else renderQueue();
+  highlightSelected();
+}
+
+function serve(){
+  if(!running||paused) return;
+  if(barista.phase!=='idle'){toast('De barista is nog onderweg!','var(--accent)');return}
+  const c = state.customers.find(x=>x.id===selectedId);
+  if(!c){toast('Kies eerst een klant 👆','var(--accent)');return}
+  if(cup.length===0){toast('Het kopje is nog leeg!','var(--accent)');return}
+  barista.drink=[...cup]; barista.custId=c.id; barista.phase='go';
+  barista.targetX = customerX(c.id) ?? HOME_X;
+  cup=[]; renderCup(); sound('click');
+  // volgende klant alvast selecteren
+  const next = state.customers.find(x=>x.id!==c.id);
+  if(next){selectedId=next.id; highlightSelected();}
+}
+
+function deliver(){
+  const c = state.customers.find(x=>x.id===barista.custId);
+  const drink = barista.drink; barista.drink=null; barista.custId=null;
+  if(!c) return;
+  if(sortKey(drink)===sortKey(c.recipe.i)){
+    const ratio = c.left/c.max;
+    const tip = ratio>.66?3:ratio>.33?1:0;
+    const earned = c.recipe.p + tip;
+    state.coins += earned; state.served++; state.servedThisLevel++;
+    sound('good');
+    coinPop(barista.x, `+${earned}💰`);
+    toast(tip===3?'Supersnel! 🌟':tip?'Lekker! 😋':'Bedankt! 🙂','var(--green)');
+    removeCustomer(c, true);
+    if(state.servedThisLevel >= 4 + state.level){
+      state.level++; state.servedThisLevel=0;
+      const newR = RECIPES.filter(r=>r.lvl===state.level);
+      levelBanner(`Dag ${state.level}!` + (newR.length?`<br><span style="font-size:22px">Nieuw: ${newR.map(r=>r.n).join(', ')}</span>`:''));
+      renderRecipes();
+    }
+    renderHUD();
+  } else {
+    sound('bad');
+    c.left = Math.max(c.left - c.max*0.3, 0.5);
+    const el=document.querySelector(`.customer[data-id="${c.id}"] .face`);
+    if(el){const f=el.textContent; el.textContent='🤢'; setTimeout(()=>{if(el.isConnected) el.textContent=f},900);}
+    toast(`Dat is geen ${c.recipe.n}! 🤢`,'var(--red)');
+    if(selectedId===null || !state.customers.find(x=>x.id===selectedId)) selectedId=c.id;
+    highlightSelected();
+  }
+}
+
+function addIng(k){
+  if(!running||paused) return;
+  if(refill[k]>0){toast(`${ING[k].n} wordt bijgevuld…`,'var(--accent)');return}
+  if(stock[k]<=0){startRefill(k);return}
+  if(cup.length>=6){toast('Het kopje zit vol!','var(--accent)');return}
+  stock[k]--; cup.push(k); sound('pour'); renderCup(); updateIngButton(k);
+  if(stock[k]===0) toast(`${ING[k].n} is op! Klik om bij te vullen`,'var(--red)');
+}
+function startRefill(k){
+  if(!running||paused||refill[k]>0||stock[k]>=ING[k].max) return;
+  refill[k]=ING[k].rt; sound('click'); updateIngButton(k);
+}
+
+function gameOver(){
+  running=false;
+  let best=0; try{best=+localStorage.getItem('koffiebar-best')||0;}catch(e){}
+  const isNew = state.coins>best;
+  if(isNew){try{localStorage.setItem('koffiebar-best',state.coins)}catch(e){}; best=state.coins}
+  $('overText').innerHTML = `Je hebt <b>${state.served}</b> klanten geholpen, dag <b>${state.level}</b> gehaald en <b>${state.coins} 💰</b> verdiend.`;
+  $('overBest').textContent = isNew? '🏆 Nieuw record!' : `Record: ${best} 💰`;
+  setTimeout(()=>$('overScreen').classList.remove('hidden'),600);
+}
+
+/* ---------- Rendering ---------- */
+function renderAll(){renderHUD();renderQueue();renderCup();renderIngredients();renderRecipes()}
+function renderHUD(){
+  $('level').textContent=state.level;
+  $('coins').textContent=state.coins;
+  $('served').textContent=state.served;
+  const l=Math.max(state.lives,0);
+  $('hearts').textContent='❤️'.repeat(l)+'🖤'.repeat(3-l);
+}
+function renderQueue(){
+  const q=$('queue');
+  q.querySelectorAll('.customer:not(.leaving)').forEach(e=>{
+    if(!state.customers.find(c=>c.id==e.dataset.id)) e.remove();
+  });
+  if(!state.customers.length && !q.querySelector('.customer')){q.innerHTML='<div class="empty">Wachten op klanten…</div>';return}
+  q.querySelector('.empty')?.remove();
+  const existing = new Set([...q.querySelectorAll('.customer')].map(e=>+e.dataset.id));
+  for(const c of state.customers){
+    if(existing.has(c.id)) continue;
+    const d=document.createElement('div');
+    d.className='customer'; d.dataset.id=c.id;
+    d.innerHTML=`<div class="bubble"><div class="drink">${c.recipe.n}</div><div class="icons">${state.level<=2?c.recipe.i.map(k=>ING[k].e).join(''):''}</div><div class="patience"><div></div></div></div><div class="face">${c.face}</div><div class="name">${c.name}</div>`;
+    d.onclick=()=>{selectedId=c.id;highlightSelected();sound('click')};
+    q.appendChild(d);
+  }
+  highlightSelected(); updatePatience();
+}
+function highlightSelected(){
+  document.querySelectorAll('.customer').forEach(e=>e.classList.toggle('selected', +e.dataset.id===selectedId));
+}
+function updatePatience(){
+  for(const c of state.customers){
+    const bar=document.querySelector(`.customer[data-id="${c.id}"] .patience div`);
+    if(!bar) continue;
+    const r=Math.max(c.left/c.max,0);
+    bar.style.width=(r*100)+'%';
+    bar.style.background = r>.5?'var(--green)':r>.25?'var(--gold)':'var(--red)';
+    const face=document.querySelector(`.customer[data-id="${c.id}"]:not(.leaving) .face`);
+    if(face && r<.25 && !face.dataset.mad){face.dataset.mad=1;face.textContent='😤'}
+  }
+}
+function renderCup(){
+  $('cup').innerHTML=cup.map(k=>`<div class="layer" style="height:${ING[k].h}px;background:${ING[k].c}"></div>`).join('');
+  $('cuplist').textContent = cup.length? cup.map(k=>ING[k].n).join(' + ') : 'Leeg';
+}
+function renderIngredients(){
+  $('ingredients').innerHTML = KEYS.map((k,i)=>`<button class="ing" data-k="${k}"><span class="k">${HOTKEYS[i].toUpperCase()}</span><span class="refill" data-r="${k}" title="Nu bijvullen">↻</span><span class="e">${ING[k].e}</span>${ING[k].n}<span class="cnt"></span><div class="stock"><div></div></div></button>`).join('');
+  document.querySelectorAll('.ing').forEach(b=>b.onclick=()=>addIng(b.dataset.k));
+  document.querySelectorAll('.refill').forEach(b=>b.onclick=e=>{e.stopPropagation();startRefill(b.dataset.r)});
+  KEYS.forEach(updateIngButton);
+}
+function updateIngButton(k){
+  const b=document.querySelector(`.ing[data-k="${k}"]`); if(!b) return;
+  const max=ING[k].max, s=stock[k]??max;
+  const bar=b.querySelector('.stock div');
+  b.classList.remove('low','out','refilling');
+  b.querySelector('.overlay-txt')?.remove();
+  if(refill[k]>0){
+    b.classList.add('refilling');
+    const prog = 1 - refill[k]/ING[k].rt;
+    bar.style.width=(prog*100)+'%'; bar.style.background='#4a90d9';
+    b.insertAdjacentHTML('beforeend',`<div class="overlay-txt">Bijvullen ${Math.ceil(refill[k])}s</div>`);
+    b.querySelector('.cnt').textContent='';
+    return;
+  }
+  bar.style.width=(s/max*100)+'%';
+  bar.style.background = s/max>.4?'var(--green)':s>0?'var(--gold)':'var(--red)';
+  b.querySelector('.cnt').textContent=`${s}/${max}`;
+  if(s===0){b.classList.add('out'); b.insertAdjacentHTML('beforeend',`<div class="overlay-txt">OP! Bijvullen</div>`);}
+  else if(s/max<=.3) b.classList.add('low');
+  b.querySelector('.refill').style.visibility = s<max?'visible':'hidden';
+}
+function renderRecipes(){
+  $('recipes').innerHTML = RECIPES.map(r=>{
+    const locked = state && r.lvl>state.level;
+    return `<div class="rec ${locked?'locked':''}"><b>${r.n}</b><span>${locked?'🔒 dag '+r.lvl:r.i.map(k=>ING[k].e).join('')}</span></div>`;
+  }).join('');
+}
+
+function toast(msg,color){
+  const t=document.createElement('div');t.className='toast';t.textContent=msg;t.style.background=color;
+  document.body.appendChild(t);setTimeout(()=>t.remove(),1400);
+}
+function coinPop(x,txt){
+  const p=document.createElement('div');p.className='coinpop';p.textContent=txt;
+  p.style.left=(x-20)+'px';p.style.bottom='120px';
+  $('shop').appendChild(p);setTimeout(()=>p.remove(),1000);
+}
+function levelBanner(html){
+  const t=document.createElement('div');t.className='levelup';t.innerHTML=`<div style="text-align:center">${html}</div>`;
+  document.body.appendChild(t);setTimeout(()=>t.remove(),2400);sound('level');
+}
+
+/* ---------- Sound ---------- */
+let actx=null;
+function sound(type){
+  try{
+    if(!actx) actx=new (window.AudioContext||window.webkitAudioContext)();
+    const o=actx.createOscillator(), g=actx.createGain(); o.connect(g); g.connect(actx.destination);
+    const t=actx.currentTime;
+    const map={click:[600,.05,'sine'],pour:[300+Math.random()*120,.08,'triangle'],good:[880,.25,'sine'],bad:[160,.3,'sawtooth'],level:[660,.5,'square'],ding:[1200,.15,'sine']};
+    const [f,d,w]=map[type]; o.type=w; o.frequency.setValueAtTime(f,t);
+    if(type==='good'||type==='level') o.frequency.linearRampToValueAtTime(f*1.5,t+d);
+    if(type==='bad') o.frequency.linearRampToValueAtTime(f*.6,t+d);
+    g.gain.setValueAtTime(.08,t); g.gain.exponentialRampToValueAtTime(.001,t+d);
+    o.start(t); o.stop(t+d);
+  }catch(e){}
+}
+
+/* ---------- Controls ---------- */
+function start(){
+  document.querySelectorAll('.overlay').forEach(o=>o.classList.add('hidden'));
+  $('queue').innerHTML='';
+  newGame(); running=true; paused=false; lastTime=performance.now(); requestAnimationFrame(loop);
+}
+function setPause(p){
+  if(!running) return; paused=p;
+  $('pauseScreen').classList.toggle('hidden',!p);
+  if(!p) lastTime=performance.now();
+}
+$('startBtn').onclick=start;
+$('againBtn').onclick=start;
+$('serveBtn').onclick=serve;
+$('trashBtn').onclick=()=>{cup=[];renderCup();sound('click')};
+$('pauseBtn').onclick=()=>setPause(true);
+$('resumeBtn').onclick=()=>setPause(false);
+$('recToggle').onclick=e=>{
+  const r=$('recipes'); r.classList.toggle('hidden');
+  e.target.textContent=r.classList.contains('hidden')?'tonen':'verbergen';
+};
+document.addEventListener('keydown',e=>{
+  const key=e.key.toLowerCase();
+  const idx=HOTKEYS.indexOf(key);
+  if(idx>=0){addIng(KEYS[idx]);}
+  else if(e.key===' '||e.key==='Enter'){e.preventDefault();serve();}
+  else if(e.key==='Backspace'){e.preventDefault();cup=[];renderCup();}
+  else if(key==='p'||e.key==='Escape'){setPause(!paused);}
+  else if(e.key==='Tab'&&state?.customers.length){
+    e.preventDefault();
+    const i=state.customers.findIndex(c=>c.id===selectedId);
+    selectedId=state.customers[(i+1)%state.customers.length].id; highlightSelected();
+  }
+});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&running&&!paused)setPause(true)});
+
+state={level:1,customers:[],coins:0,served:0,lives:3};
+KEYS.forEach(k=>{stock[k]=ING[k].max; refill[k]=0;});
+renderAll(); renderBarista();
+try{const b=+localStorage.getItem('koffiebar-best'); if(b) $('bestStart').textContent=`🏆 Jouw record: ${b} 💰`;}catch(e){}
+</script>
+</body>
+</html>
